@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DadBot</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#10131b;color:#edf1fb}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 0%,#243c55 0,transparent 42%),#10131b}
+    header{display:flex;align-items:center;justify-content:space-between;padding:24px 32px;border-bottom:1px solid #ffffff18}
+    h1{margin:0;font-size:24px;letter-spacing:-.8px}small,.muted{color:#9ba9bc}
+    main{padding:28px 32px;max-width:1440px;margin:auto}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .panel{background:#ffffff09;border:1px solid #ffffff18;border-radius:18px;padding:20px;backdrop-filter:blur(18px)}
+    .wide{grid-column:span 2}.metric{font-size:30px;font-weight:700;margin-top:8px}
+    button{border:0;border-radius:10px;padding:11px 16px;background:#8bc5e8;color:#10202b;font-weight:700;cursor:pointer}
+    button.secondary{background:#ffffff15;color:#edf1fb;border:1px solid #ffffff20}
+    .actions{display:flex;gap:10px}.status{display:inline-flex;gap:8px;align-items:center;color:#9ee4bb}
+    .dot{width:8px;height:8px;border-radius:50%;background:#69d69a}
+    #logs{height:240px;overflow:auto;font:12px ui-monospace,monospace;white-space:pre-wrap;color:#b9c9dc}
+    .target{padding:12px 0;border-bottom:1px solid #ffffff14}.target:last-child{border:0}
+    @media(max-width:850px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}header,main{padding:20px}}
+  </style>
+</head>
+<body>
+  <header><div><h1>DadBot <small>· Deal finder</small></h1><small>Athens first. Great music finds, less scrolling.</small></div><div class="status"><span class="dot"></span><span id="state">Ready</span></div></header>
+  <main>
+    <div class="grid">
+      <section class="panel"><small>WORKER POOL</small><div class="metric">20</div><small>Concurrent workers · rate-limited per source</small></section>
+      <section class="panel"><small>COMPLETED TARGETS</small><div class="metric" id="completed">0</div><small>Search targets processed this run</small></section>
+      <section class="panel"><small>QUEUE</small><div class="metric" id="queued">0</div><small>Targets waiting to be processed</small></section>
+      <section class="panel wide"><h2>Discovery run</h2><p class="muted">The scan engine is being wired up. Source adapters will only use permitted public/API access and user-provided links.</p><div class="actions"><button onclick="startScan()">Start scan</button><button class="secondary" onclick="stopScan()">Stop</button></div></section>
+      <section class="panel"><h2>Targets</h2><div id="targets" class="muted">Loading targets…</div></section>
+      <section class="panel wide"><h2>Live log</h2><div id="logs">DadBot initialized.</div></section>
+    </div>
+  </main>
+  <script>
+    const api = () => window.go?.main?.App;
+    async function refresh(){
+      const a=api(); if(!a)return;
+      try{
+        const [s,t,l]=await Promise.all([a.GetStatus(),a.GetTargets(),a.GetLogs()]);
+        document.getElementById('state').textContent=s.running?'Scanning':'Ready';
+        document.getElementById('completed').textContent=s.completed;
+        document.getElementById('queued').textContent=s.queued;
+        document.getElementById('targets').innerHTML=t.map(x=>'<div class="target"><b>'+escapeHTML(x.name)+'</b><br><small>'+escapeHTML(x.location)+' · '+x.keywords.length+' keywords · max €'+x.max_price+'</small></div>').join('');
+        document.getElementById('logs').textContent=l.slice(-100).map(x=>'['+new Date(x.time).toLocaleTimeString()+'] '+x.level+' '+x.message).join('\n');
+      }catch(e){console.error(e)}
+    }
+    function escapeHTML(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+    async function startScan(){try{await api()?.StartScan();await refresh()}catch(e){alert(e)}}
+    async function stopScan(){await api()?.StopScan();await refresh()}
+    setInterval(refresh,1000); refresh();
+  </script>
+</body>
+</html>
